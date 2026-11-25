@@ -1,0 +1,384 @@
+{
+  "entities": {
+    "GroupConfig": {
+      "title": "GroupConfig",
+      "description": "Konfigurasi nama dan deskripsi grup Ruang Kenangan.",
+      "type": "object",
+      "properties": {
+        "groupName": {
+          "type": "string",
+          "description": "Nama grup privat.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Deskripsi singkat grup.",
+          "maxLength": 240
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan terakhir."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "UID admin yang memperbarui pengaturan.",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["groupName", "description", "updatedAt", "updatedByUid"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Anggota grup yang diizinkan mengakses Ruang Kenangan.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Alamat email Google anggota dalam huruf kecil.",
+          "minLength": 5,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nama tampilan anggota.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "member"],
+          "description": "Peran akses anggota."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Status keaktifan akses anggota."
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID setelah anggota masuk pertama kali.",
+          "maxLength": 128
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL foto profil Google anggota.",
+          "maxLength": 500
+        },
+        "addedByEmail": {
+          "type": "string",
+          "description": "Email admin yang memberikan akses.",
+          "minLength": 5,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu anggota ditambahkan."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan status anggota."
+        }
+      },
+      "required": ["email", "displayName", "role", "active", "uid", "photoURL", "addedByEmail", "createdAt", "updatedAt"]
+    },
+    "Album": {
+      "title": "Album",
+      "description": "Album foto dan video kenangan bersama.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Judul album.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Deskripsi atau cerita singkat album.",
+          "maxLength": 400
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID pembuat album.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdByName": {
+          "type": "string",
+          "description": "Nama pembuat album.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu album dibuat."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu album diperbarui."
+        }
+      },
+      "required": ["title", "description", "createdByUid", "createdByName", "createdAt", "updatedAt"]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "Metadata foto atau video dalam sebuah album.",
+      "type": "object",
+      "properties": {
+        "albumId": {
+          "type": "string",
+          "description": "ID album induk.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "albumTitle": {
+          "type": "string",
+          "description": "Nama album induk untuk tampilan dan pencarian.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "title": {
+          "type": "string",
+          "description": "Judul kenangan foto atau video.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "caption": {
+          "type": "string",
+          "description": "Keterangan atau cerita kenangan.",
+          "maxLength": 600
+        },
+        "mediaDate": {
+          "type": "string",
+          "description": "Tanggal kenangan dalam format YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["photo", "video"],
+          "description": "Jenis media."
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "Tipe MIME berkas asli.",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "fileName": {
+          "type": "string",
+          "description": "Nama berkas asli.",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "Ukuran berkas dalam byte."
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "Durasi video dalam detik (0 untuk foto)."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "Path objek di Firebase Storage.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID pengunggah.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdByName": {
+          "type": "string",
+          "description": "Nama pengunggah.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pengunggahan."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan."
+        }
+      },
+      "required": [
+        "albumId",
+        "albumTitle",
+        "title",
+        "caption",
+        "mediaDate",
+        "mediaType",
+        "mimeType",
+        "fileName",
+        "fileSize",
+        "durationSec",
+        "storagePath",
+        "createdByUid",
+        "createdByName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "Folder atau subfolder untuk mengorganisasi dokumen PDF.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nama folder.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "parentId": {
+          "type": "string",
+          "description": "ID folder induk atau 'root' untuk tingkat teratas.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID pembuat folder.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdByName": {
+          "type": "string",
+          "description": "Nama pembuat folder.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu folder dibuat."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu folder diperbarui."
+        }
+      },
+      "required": ["name", "parentId", "createdByUid", "createdByName", "createdAt", "updatedAt"]
+    },
+    "DocumentFile": {
+      "title": "DocumentFile",
+      "description": "Metadata dokumen PDF dalam folder.",
+      "type": "object",
+      "properties": {
+        "folderId": {
+          "type": "string",
+          "description": "ID folder tempat dokumen berada atau 'root'.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Nama tampilan dokumen PDF.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "originalFileName": {
+          "type": "string",
+          "description": "Nama berkas PDF asli.",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "mimeType": {
+          "type": "string",
+          "enum": ["application/pdf"],
+          "description": "Tipe MIME dokumen."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "Ukuran berkas dalam byte."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "Path objek di Firebase Storage.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID pengunggah dokumen.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdByName": {
+          "type": "string",
+          "description": "Nama pengunggah dokumen.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pengunggahan dokumen."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan dokumen."
+        }
+      },
+      "required": [
+        "folderId",
+        "title",
+        "originalFileName",
+        "mimeType",
+        "fileSize",
+        "storagePath",
+        "createdByUid",
+        "createdByName",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/groupSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/GroupConfig" },
+      "description": "Pengaturan grup Ruang Kenangan (dokumen utama: 'main')."
+    },
+    "/members/{memberEmail}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Daftar email anggota yang disetujui beserta perannya."
+    },
+    "/albums/{albumId}": {
+      "schema": { "$ref": "#/entities/Album" },
+      "description": "Koleksi album foto dan video."
+    },
+    "/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaItem" },
+      "description": "Koleksi metadata foto dan video milik album."
+    },
+    "/folders/{folderId}": {
+      "schema": { "$ref": "#/entities/Folder" },
+      "description": "Koleksi folder dan subfolder dokumen."
+    },
+    "/documents/{docId}": {
+      "schema": { "$ref": "#/entities/DocumentFile" },
+      "description": "Koleksi metadata dokumen PDF."
+    }
+  }
+}

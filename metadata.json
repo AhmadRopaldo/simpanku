@@ -1,0 +1,8 @@
+{
+  "name": "Ruang Kenangan",
+  "description": "Aplikasi privat grup untuk menyimpan album foto, video kenangan bersama, dan dokumen PDF penting dalam folder.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

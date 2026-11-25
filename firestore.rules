@@ -1,0 +1,297 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helpers
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isValidId(id) {
+      return id is string
+        && id.size() >= 1
+        && id.size() <= 128
+        && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEmailKey(email) {
+      return email is string
+        && email.size() >= 5
+        && email.size() <= 128
+        && email.matches('^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}$');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && authEmail() == 'ahmadropaldo@gmail.com';
+    }
+
+    function isActiveMember() {
+      return isVerifiedUser() && (
+        isBootstrappedAdmin() ||
+        (
+          exists(/databases/$(database)/documents/members/$(authEmail())) &&
+          get(/databases/$(database)/documents/members/$(authEmail())).data.active == true
+        )
+      );
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        isBootstrappedAdmin() ||
+        (
+          exists(/databases/$(database)/documents/members/$(authEmail())) &&
+          get(/databases/$(database)/documents/members/$(authEmail())).data.active == true &&
+          get(/databases/$(database)/documents/members/$(authEmail())).data.role == 'admin'
+        )
+      );
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidGroupConfig(data) {
+      return data.keys().hasAll(['groupName', 'description', 'updatedAt', 'updatedByUid'])
+        && data.keys().hasOnly(['groupName', 'description', 'updatedAt', 'updatedByUid'])
+        && data.groupName is string && data.groupName.size() >= 1 && data.groupName.size() <= 80
+        && data.description is string && data.description.size() <= 240
+        && data.updatedAt is timestamp && data.updatedAt == request.time
+        && data.updatedByUid is string && data.updatedByUid == request.auth.uid && data.updatedByUid.size() <= 128;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['email', 'displayName', 'role', 'active', 'uid', 'photoURL', 'addedByEmail', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['email', 'displayName', 'role', 'active', 'uid', 'photoURL', 'addedByEmail', 'createdAt', 'updatedAt'])
+        && isValidEmailKey(data.email)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.role in ['admin', 'member']
+        && data.active is bool
+        && data.uid is string && data.uid.size() <= 128
+        && data.photoURL is string && data.photoURL.size() <= 500
+        && data.addedByEmail is string && data.addedByEmail.size() >= 5 && data.addedByEmail.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidAlbum(data) {
+      return data.keys().hasAll(['title', 'description', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'description', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 100
+        && data.description is string && data.description.size() <= 400
+        && data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128
+        && data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidMediaItem(data) {
+      return data.keys().hasAll([
+          'albumId', 'albumTitle', 'title', 'caption', 'mediaDate', 'mediaType',
+          'mimeType', 'fileName', 'fileSize', 'durationSec', 'storagePath',
+          'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'albumId', 'albumTitle', 'title', 'caption', 'mediaDate', 'mediaType',
+          'mimeType', 'fileName', 'fileSize', 'durationSec', 'storagePath',
+          'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.albumId)
+        && data.albumTitle is string && data.albumTitle.size() >= 1 && data.albumTitle.size() <= 100
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.caption is string && data.caption.size() <= 600
+        && data.mediaDate is string && data.mediaDate.size() == 10 && data.mediaDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.mediaType in ['photo', 'video']
+        && data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 64
+        && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 180
+        && data.fileSize is number && data.fileSize > 0 && data.fileSize <= 52428800
+        && data.durationSec is number && data.durationSec >= 0 && data.durationSec <= 86400
+        && data.storagePath is string && data.storagePath.size() >= 1 && data.storagePath.size() <= 300
+        && data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128
+        && data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidFolder(data) {
+      return data.keys().hasAll(['name', 'parentId', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'parentId', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && isValidId(data.parentId)
+        && data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128
+        && data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidDocumentFile(data) {
+      return data.keys().hasAll([
+          'folderId', 'title', 'originalFileName', 'mimeType', 'fileSize',
+          'storagePath', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'folderId', 'title', 'originalFileName', 'mimeType', 'fileSize',
+          'storagePath', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.folderId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && data.originalFileName is string && data.originalFileName.size() >= 1 && data.originalFileName.size() <= 180
+        && data.mimeType == 'application/pdf'
+        && data.fileSize is number && data.fileSize > 0 && data.fileSize <= 26214400
+        && data.storagePath is string && data.storagePath.size() >= 1 && data.storagePath.size() <= 300
+        && data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128
+        && data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    // 4. Collection Rules
+    match /groupSettings/{settingId} {
+      allow get: if isValidId(settingId) && isActiveMember();
+      allow list: if false;
+      allow create: if isValidId(settingId) && settingId == 'main' && isAdmin() && isValidGroupConfig(incoming());
+      allow update: if isValidId(settingId) && settingId == 'main' && isAdmin() && isValidGroupConfig(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['groupName', 'description', 'updatedAt', 'updatedByUid']);
+      allow delete: if false;
+    }
+
+    match /members/{memberEmail} {
+      allow get: if isValidEmailKey(memberEmail) && isVerifiedUser() && (memberEmail == authEmail() || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidEmailKey(memberEmail)
+        && isAdmin()
+        && isValidMember(incoming())
+        && incoming().email == memberEmail
+        && incoming().createdAt == request.time;
+      allow update: if isValidEmailKey(memberEmail)
+        && isValidMember(incoming())
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().addedByEmail == existing().addedByEmail
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'active', 'uid', 'photoURL', 'updatedAt'])) ||
+          (isVerifiedUser() && memberEmail == authEmail() && existing().active == true
+            && incoming().role == existing().role
+            && incoming().active == existing().active
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'uid', 'photoURL', 'updatedAt']))
+        );
+      allow delete: if isValidEmailKey(memberEmail) && isAdmin() && memberEmail != 'ahmadropaldo@gmail.com';
+    }
+
+    match /albums/{albumId} {
+      allow get: if isValidId(albumId) && isActiveMember();
+      allow list: if isActiveMember();
+      allow create: if isValidId(albumId)
+        && isActiveMember()
+        && isValidAlbum(incoming())
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(albumId)
+        && isActiveMember()
+        && isValidAlbum(incoming())
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && (isAdmin() || existing().createdByUid == request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'updatedAt']);
+      allow delete: if isValidId(albumId)
+        && isActiveMember()
+        && (isAdmin() || existing().createdByUid == request.auth.uid);
+    }
+
+    match /media/{mediaId} {
+      allow get: if isValidId(mediaId) && isActiveMember();
+      allow list: if isActiveMember();
+      allow create: if isValidId(mediaId)
+        && isActiveMember()
+        && isValidMediaItem(incoming())
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/albums/$(incoming().albumId));
+      allow update: if isValidId(mediaId)
+        && isActiveMember()
+        && isValidMediaItem(incoming())
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().storagePath == existing().storagePath
+        && incoming().mimeType == existing().mimeType
+        && incoming().fileName == existing().fileName
+        && incoming().fileSize == existing().fileSize
+        && incoming().mediaType == existing().mediaType
+        && incoming().durationSec == existing().durationSec
+        && (isAdmin() || existing().createdByUid == request.auth.uid)
+        && exists(/databases/$(database)/documents/albums/$(incoming().albumId))
+        && incoming().diff(existing()).affectedKeys().hasOnly(['albumId', 'albumTitle', 'title', 'caption', 'mediaDate', 'updatedAt']);
+      allow delete: if isValidId(mediaId)
+        && isActiveMember()
+        && (isAdmin() || existing().createdByUid == request.auth.uid);
+    }
+
+    match /folders/{folderId} {
+      allow get: if isValidId(folderId) && isActiveMember();
+      allow list: if isActiveMember();
+      allow create: if isValidId(folderId)
+        && folderId != 'root'
+        && isActiveMember()
+        && isValidFolder(incoming())
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && (incoming().parentId == 'root' || exists(/databases/$(database)/documents/folders/$(incoming().parentId)));
+      allow update: if isValidId(folderId)
+        && isActiveMember()
+        && isValidFolder(incoming())
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().parentId != folderId
+        && (incoming().parentId == 'root' || exists(/databases/$(database)/documents/folders/$(incoming().parentId)))
+        && (isAdmin() || existing().createdByUid == request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'parentId', 'updatedAt']);
+      allow delete: if isValidId(folderId)
+        && isActiveMember()
+        && (isAdmin() || existing().createdByUid == request.auth.uid);
+    }
+
+    match /documents/{docId} {
+      allow get: if isValidId(docId) && isActiveMember();
+      allow list: if isActiveMember();
+      allow create: if isValidId(docId)
+        && isActiveMember()
+        && isValidDocumentFile(incoming())
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && (incoming().folderId == 'root' || exists(/databases/$(database)/documents/folders/$(incoming().folderId)));
+      allow update: if isValidId(docId)
+        && isActiveMember()
+        && isValidDocumentFile(incoming())
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().storagePath == existing().storagePath
+        && incoming().originalFileName == existing().originalFileName
+        && incoming().mimeType == existing().mimeType
+        && incoming().fileSize == existing().fileSize
+        && (incoming().folderId == 'root' || exists(/databases/$(database)/documents/folders/$(incoming().folderId)))
+        && (isAdmin() || existing().createdByUid == request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['folderId', 'title', 'updatedAt']);
+      allow delete: if isValidId(docId)
+        && isActiveMember()
+        && (isAdmin() || existing().createdByUid == request.auth.uid);
+    }
+  }
+}
